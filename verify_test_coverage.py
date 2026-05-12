@@ -104,6 +104,21 @@ TOOL_TEST_MAPPING = {
     "jamf_create_api_client_credentials": ["test_create_api_role_and_integration"],
     # Convenience function
     "jamf_create_computer_update_api_client": ["test_create_api_role_and_integration"],
+    # MDM / DDM commands
+    "jamf_get_mdm_commands": ["test_get_mdm_commands"],
+    "jamf_get_computer_management_history": [
+        "test_get_computer_management_history",
+    ],
+    "jamf_get_mobile_device_management_history": [
+        "test_get_mobile_device_management_history",
+    ],
+    "jamf_get_managed_software_update_plans": [
+        "test_get_managed_software_update_plans",
+    ],
+    # Composite reports
+    "jamf_get_profile_deployment_failures": [
+        "test_get_profile_deployment_failures",
+    ],
     # Jamf Protect tools
     "jamf_protect_get_alert": ["test_protect_get_alert"],
     "jamf_protect_list_alerts": ["test_protect_list_alerts"],

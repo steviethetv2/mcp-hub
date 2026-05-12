@@ -46,6 +46,7 @@ from . import api_roles
 from . import app_installers
 from . import apps
 from . import categories
+from . import commands
 from . import computers
 from . import extension_attributes
 from . import groups
@@ -55,6 +56,7 @@ from . import policies
 from . import prestages
 from . import printers
 from . import profiles
+from . import reports
 from . import risk
 from . import scripts
 from . import users

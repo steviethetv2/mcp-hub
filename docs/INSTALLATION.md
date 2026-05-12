@@ -268,6 +268,7 @@ export JAMF_PRODUCTS="pro,protect"
    | Read Printers                             | Printer lookup                             |
    | Create Printers                           | Printer creation                           |
    | Update Printers                           | Printer updates                            |
+   | Read MDM Commands                         | MDM command queries, profile failure reports |
 
    > **Tip:** The Jamf Pro interface does not allow bulk permissions import. To add permissions through the interface quicker, type in the record/item you're looking for (without the Read/Create/Update) and it will filter the available options by that item to select. For example, instead of typing in "Read User Extension Attributes" just type in "User Extension" and both Read and Update will appear for quicker adding to the list.
 

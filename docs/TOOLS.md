@@ -55,7 +55,7 @@ Core device management tools for macOS, iOS/iPadOS, and tvOS devices.
 
 | Tool | Description |
 |------|-------------|
-| `jamf_get_computer` | Get computer info by ID, serial number, or name |
+| `jamf_get_computer` | Get computer info by ID, serial number, or name. Supports a `sections` argument (e.g., `["GENERAL", "OPERATING_SYSTEM", "HARDWARE"]` or `["ALL"]`) to control which inventory subsections are returned for the list path; single-computer lookups always return all sections. |
 | `jamf_update_computer` | Update computer inventory fields and extension attributes |
 | `jamf_get_mobile_device` | Get mobile device info by ID, serial number, or name |
 | `jamf_update_mobile_device` | Update mobile device inventory fields |
@@ -121,6 +121,23 @@ Core device management tools for macOS, iOS/iPadOS, and tvOS devices.
 | `jamf_create_api_integration` | Create a new API integration (client) |
 | `jamf_create_api_client_credentials` | Generate OAuth credentials for an integration |
 | `jamf_create_computer_update_api_client` | Create API role + client for computer updates |
+
+## MDM & DDM Commands
+
+| Tool | Description |
+|------|-------------|
+| `jamf_get_mdm_commands` | List MDM commands tenant-wide. Filter by client management UUID, command name, and status (Pending, Acknowledged, NotNow, Error). |
+| `jamf_get_computer_management_history` | Get pending, completed, and failed MDM commands for a single computer (Jamf Pro ID). |
+| `jamf_get_mobile_device_management_history` | Get pending, completed, and failed MDM commands for a single mobile device (Jamf Pro ID). |
+| `jamf_get_managed_software_update_plans` | List DDM-driven Managed Software Update plans and their per-device status. |
+
+## Reports
+
+Composite tools that aggregate data from multiple API endpoints into a single summary.
+
+| Tool | Description |
+|------|-------------|
+| `jamf_get_profile_deployment_failures` | Aggregated report of configuration profile deployment failures. Auto-paginates InstallProfile errors and enriches with profile names. Sorted by failure count. |
 
 ---
 

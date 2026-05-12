@@ -29,7 +29,7 @@ See [Installation](docs/INSTALLATION.md) for full configuration details.
 | Doc                                  | Description                                                 |
 | ------------------------------------ | ----------------------------------------------------------- |
 | [Installation](docs/INSTALLATION.md) | Setup, env vars, client configuration (Claude Desktop, CLI) |
-| [Tools](docs/TOOLS.md)               | Complete reference for all 50 MCP tools by product          |
+| [Tools](docs/TOOLS.md)               | Complete reference for all 51 MCP tools by product          |
 | [Contributing](CONTRIBUTING.md)      | Development setup, testing, adding new tools                |
 
 ## Supported Products
@@ -37,7 +37,7 @@ See [Installation](docs/INSTALLATION.md) for full configuration details.
 | Product                 | Tools | Description                                                            |
 | ----------------------- | ----- | ---------------------------------------------------------------------- |
 | **Setup**               | 2     | Onboarding tools (always available, no credentials needed)             |
-| **Jamf Pro**            | 40    | Device management, groups, policies, profiles, apps, scripts, printers |
+| **Jamf Pro**            | 41    | Device management, groups, policies, profiles, apps, scripts, printers |
 | **Jamf Protect**        | 6     | Security alerts, enrolled computers, analytics (detection rules)       |
 | **Jamf Security Cloud** | 2     | Device risk status and overrides via RISK API                          |
 

@@ -36,7 +36,7 @@ This is an MCP (Model Context Protocol) server that enables LLMs to interact wit
 
 | Product | Description | Tools Available |
 |---------|-------------|-----------------|
-| **Jamf Pro** | Core device management for macOS, iOS/iPadOS, and tvOS | 40 tools |
+| **Jamf Pro** | Core device management for macOS, iOS/iPadOS, and tvOS | 41 tools |
 | **Jamf Protect** | Endpoint security for threat detection and response | 6 tools |
 | **Jamf Security Cloud** | Device risk management via RISK API | 2 tools |
 | **Setup** | Zero-credential onboarding (always available) | 2 tools |
@@ -289,6 +289,7 @@ When creating multiple dependent resources, follow this order:
 | Buildings/Departments | `tools/locations.py` | `client.py` |
 | Apps (Mac/Mobile/eBooks/etc) | `tools/apps.py` | `client.py` |
 | API Roles | `tools/api_roles.py` | `client.py` |
+| Reports | `tools/reports.py` | `client.py` |
 
 **Jamf Protect Tools:**
 

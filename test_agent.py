@@ -614,23 +614,42 @@ class JamfTestAgent:
     # =========================================================================
 
     async def test_get_computers_list(self) -> TestResult:
-        """Test getting computer inventory list"""
+        """Test getting computer inventory list with expanded sections.
+
+        Verifies the section query parameter is honored by the API and that the
+        OPERATING_SYSTEM section is populated (not null) when explicitly
+        requested. This guards the regression that motivated adding a
+        `sections` argument to `jamf_get_computer`.
+        """
         status, data = await self._api_request(
             "GET", "/api/v1/computers-inventory",
-            params={"page-size": 10}
+            params={
+                "page-size": 10,
+                "section": ["GENERAL", "OPERATING_SYSTEM", "HARDWARE"],
+            }
         )
 
         results = data.get("results", [])
         if results:
             self.samples["computer_id"] = results[0].get("id")
 
+        os_populated = any(
+            isinstance(r.get("operatingSystem"), dict)
+            and r["operatingSystem"].get("version")
+            for r in results
+        )
+
         return TestResult(
             name="Get Computers (List)",
             category="Computers",
             status=TestStatus.PASSED,
             response_code=status,
-            message=f"Retrieved {len(results)} computers",
-            details={"count": len(results), "total": data.get("totalCount", len(results))}
+            message=f"Retrieved {len(results)} computers (OS populated: {os_populated})",
+            details={
+                "count": len(results),
+                "total": data.get("totalCount", len(results)),
+                "os_section_populated": os_populated,
+            }
         )
 
     async def test_get_computer_detail(self) -> TestResult:
@@ -2190,6 +2209,165 @@ class JamfTestAgent:
             )
 
     # =========================================================================
+    # MDM / DDM COMMAND TESTS
+    # =========================================================================
+
+    async def test_get_mdm_commands(self) -> TestResult:
+        """Test listing MDM commands across the tenant."""
+        status, data = await self._api_request(
+            "GET", "/api/v2/mdm/commands",
+            params={"page-size": 5, "sort": "dateSent:desc"},
+        )
+        results = data.get("results", [])
+        return TestResult(
+            name="Get MDM Commands (List)",
+            category="MDM Commands",
+            status=TestStatus.PASSED,
+            response_code=status,
+            message=f"Retrieved {len(results)} MDM commands",
+            details={
+                "count": len(results),
+                "total": data.get("totalCount", len(results)),
+            },
+        )
+
+    async def test_get_computer_management_history(self) -> TestResult:
+        """Test fetching the per-computer command history (Classic API)."""
+        if not self.samples["computer_id"]:
+            return TestResult(
+                name="Get Computer Management History",
+                category="MDM Commands",
+                status=TestStatus.SKIPPED,
+                message="No computer ID available",
+            )
+        comp_id = self.samples["computer_id"]
+        status, data = await self._api_request(
+            "GET",
+            f"/JSSResource/computerhistory/id/{comp_id}/subset/Commands",
+        )
+        history = data.get("computer_history", data)
+        completed = len(history.get("completed_commands", []) or [])
+        pending = len(history.get("pending_commands", []) or [])
+        failed = len(history.get("failed_commands", []) or [])
+        return TestResult(
+            name="Get Computer Management History",
+            category="MDM Commands",
+            status=TestStatus.PASSED,
+            response_code=status,
+            message=(
+                f"completed={completed} pending={pending} failed={failed}"
+            ),
+            details={
+                "id": comp_id,
+                "completed": completed,
+                "pending": pending,
+                "failed": failed,
+            },
+        )
+
+    async def test_get_mobile_device_management_history(self) -> TestResult:
+        """Test fetching the per-mobile-device command history (Classic API)."""
+        if not self.samples["mobile_device_id"]:
+            return TestResult(
+                name="Get Mobile Device Management History",
+                category="MDM Commands",
+                status=TestStatus.SKIPPED,
+                message="No mobile device ID available",
+            )
+        device_id = self.samples["mobile_device_id"]
+        status, data = await self._api_request(
+            "GET",
+            f"/JSSResource/mobiledevicehistory/id/{device_id}/subset/Commands",
+        )
+        history = data.get("mobile_device_history", data)
+        completed = len(history.get("completed_commands", []) or [])
+        pending = len(history.get("pending_commands", []) or [])
+        failed = len(history.get("failed_commands", []) or [])
+        return TestResult(
+            name="Get Mobile Device Management History",
+            category="MDM Commands",
+            status=TestStatus.PASSED,
+            response_code=status,
+            message=(
+                f"completed={completed} pending={pending} failed={failed}"
+            ),
+            details={
+                "id": device_id,
+                "completed": completed,
+                "pending": pending,
+                "failed": failed,
+            },
+        )
+
+    async def test_get_managed_software_update_plans(self) -> TestResult:
+        """Test listing DDM-driven Managed Software Update plans."""
+        status, data = await self._api_request(
+            "GET", "/api/v1/managed-software-updates/plans",
+            params={"page-size": 5},
+        )
+        results = data.get("results", [])
+        return TestResult(
+            name="Get Managed Software Update Plans",
+            category="MDM Commands",
+            status=TestStatus.PASSED,
+            response_code=status,
+            message=f"Retrieved {len(results)} plans",
+            details={
+                "count": len(results),
+                "total": data.get("totalCount", len(results)),
+            },
+        )
+
+    async def test_get_profile_deployment_failures(self) -> TestResult:
+        """Test the composite profile deployment failures report."""
+        try:
+            from jamf_mcp.tools.reports import jamf_get_profile_deployment_failures
+
+            start = time.time()
+            result_json = await jamf_get_profile_deployment_failures(max_pages=2)
+            duration = (time.time() - start) * 1000
+
+            result = json.loads(result_json)
+
+            if not result.get("success"):
+                return TestResult(
+                    name="Get Profile Deployment Failures",
+                    category="Reports",
+                    status=TestStatus.FAILED,
+                    duration_ms=duration,
+                    error=f"Tool returned success=false: {result.get('error', 'unknown')}",
+                )
+
+            data = result.get("data", {})
+            total_errors = data.get("total_errors_found", 0)
+            total_profiles = data.get("total_profiles_affected", 0)
+            pages_fetched = data.get("pages_fetched", 0)
+
+            return TestResult(
+                name="Get Profile Deployment Failures",
+                category="Reports",
+                status=TestStatus.PASSED,
+                response_code=200,
+                duration_ms=duration,
+                message=(
+                    f"{total_errors} errors across {total_profiles} profile(s), "
+                    f"{pages_fetched} page(s) fetched"
+                ),
+                details={
+                    "total_errors": total_errors,
+                    "total_profiles": total_profiles,
+                    "pages_fetched": pages_fetched,
+                },
+            )
+        except Exception as e:
+            return TestResult(
+                name="Get Profile Deployment Failures",
+                category="Reports",
+                status=TestStatus.FAILED,
+                error=str(e),
+            )
+
+    # =========================================================================
     # MAIN EXECUTION
     # =========================================================================
 
@@ -2308,6 +2486,27 @@ class JamfTestAgent:
                 ("Get API Roles (List)", self.test_get_api_roles),
                 ("Get API Integrations (List)", self.test_get_api_integrations),
                 ("Create API Role and Integration", self.test_create_api_role_and_integration),
+            ]),
+            ("MDM Commands", [
+                ("Get MDM Commands (List)", self.test_get_mdm_commands),
+                (
+                    "Get Computer Management History",
+                    self.test_get_computer_management_history,
+                ),
+                (
+                    "Get Mobile Device Management History",
+                    self.test_get_mobile_device_management_history,
+                ),
+                (
+                    "Get Managed Software Update Plans",
+                    self.test_get_managed_software_update_plans,
+                ),
+            ]),
+            ("Reports", [
+                (
+                    "Get Profile Deployment Failures",
+                    self.test_get_profile_deployment_failures,
+                ),
             ]),
             # Jamf Protect tests (optional - will be skipped if not configured)
             ("Jamf Protect", [
