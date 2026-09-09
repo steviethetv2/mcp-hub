@@ -72,7 +72,16 @@ def _init_pro_client() -> JamfClient | None:
     try:
         client = JamfClient.from_env()
         set_client(client)
-        logger.info("Jamf Pro client initialized for %s", client.base_url)
+        # Logged once per lifespan startup. If token-refresh log lines in
+        # auth.py ever show an instance id that doesn't match the one printed
+        # here (or if this line itself appears more than once without a real
+        # pod restart in between), that proves something is re-creating the
+        # client mid-process rather than the token TTL just being short.
+        logger.info(
+            "Jamf Pro client initialized for %s (auth instance %s)",
+            client.base_url,
+            client.auth._instance_id,
+        )
         return client
     except JamfAuthError as e:
         logger.warning("Failed to initialize Jamf Pro client: %s", str(e))

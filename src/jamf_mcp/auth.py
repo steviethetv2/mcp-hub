@@ -8,12 +8,19 @@ The module handles automatic token refresh when tokens expire.
 import logging
 import os
 import time
+import uuid
 from dataclasses import dataclass
 from typing import Optional
 
 import httpx
 
 logger = logging.getLogger(__name__)
+
+# Below this, we suspect the tenant's configured Access Token Lifetime is too
+# short for caching to be meaningful in practice (a caller landing just after
+# refresh could still find the token effectively expired thanks to the
+# 60-second safety buffer in TokenInfo.is_expired).
+SHORT_TOKEN_TTL_WARNING_THRESHOLD_SECONDS = 120
 
 
 @dataclass
@@ -66,7 +73,16 @@ class JamfAuth:
 
         self._client_id = client_id
         self._client_secret = client_secret
-        logger.info("Using OAuth client credentials authentication")
+        # Short, log-friendly id so we can tell from the logs alone whether
+        # the same JamfAuth instance (and therefore its cached token) is
+        # persisting across calls, or whether something is constructing a
+        # fresh instance per request/tool-call.
+        self._instance_id = uuid.uuid4().hex[:8]
+        logger.info(
+            "JamfAuth instance %s created for %s (OAuth client credentials)",
+            self._instance_id,
+            self.base_url,
+        )
 
     @classmethod
     def from_env(cls) -> "JamfAuth":
@@ -114,7 +130,18 @@ class JamfAuth:
             JamfAuthError: If token acquisition fails
         """
         if self._token is None or self._token.is_expired:
+            logger.info(
+                "JamfAuth instance %s: token %s, refreshing",
+                self._instance_id,
+                "absent" if self._token is None else "expired",
+            )
             await self._refresh_token(client)
+        else:
+            logger.debug(
+                "JamfAuth instance %s: reusing cached token (valid for %.0fs more)",
+                self._instance_id,
+                self._token.expires_at - time.time(),
+            )
 
         return self._token.access_token
 
@@ -149,7 +176,28 @@ class JamfAuth:
                 expires_at=time.time() + expires_in,
                 token_type=data.get("token_type", "Bearer"),
             )
-            logger.debug("OAuth token acquired, expires in %d seconds", expires_in)
+
+            # Was DEBUG-only before, which meant production (typically running
+            # at INFO) never surfaced the real token lifetime Jamf issued.
+            # Every "-32001 timeout" / disconnect investigation so far has had
+            # to *infer* whether caching was working from indirect evidence
+            # (token-request frequency in access logs). This makes it explicit.
+            logger.info(
+                "JamfAuth instance %s acquired OAuth token, expires_in=%ds",
+                self._instance_id,
+                expires_in,
+            )
+            if expires_in < SHORT_TOKEN_TTL_WARNING_THRESHOLD_SECONDS:
+                logger.warning(
+                    "JamfAuth instance %s: Jamf issued a token with expires_in=%ds, "
+                    "which is below the %ds safety buffer used by TokenInfo.is_expired. "
+                    "Caching will provide little or no benefit until the tenant's API "
+                    "client Access Token Lifetime is increased (Jamf Pro > Settings > "
+                    "API Roles and Clients).",
+                    self._instance_id,
+                    expires_in,
+                    60,
+                )
 
         except httpx.HTTPStatusError as e:
             logger.error("OAuth token request failed: %s", e.response.text)
